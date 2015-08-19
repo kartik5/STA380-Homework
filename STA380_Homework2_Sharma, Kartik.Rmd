@@ -1,0 +1,404 @@
+---
+title: "STA380_Homework2_Sharma,Kartik"
+author: "Kartik Sharma"
+date: "August 18, 2015"
+output: word_document
+---
+
+##### The task is to analyze the Austin Bergstorm International Airport flights data and come up with insights about the flights travelling from/to Austin during year 2008.
+
+
+```{r}
+
+library(ggplot2)
+library(RColorBrewer)
+
+# Reading the csv file 
+airline<-read.csv("C:/Users/Soundgarden/Documents/GitHub/STA380/data/ABIA.csv")
+attach(airline)
+str(airline)
+```
+
+##### On analyzing the structure of the airline data we see that many variables have NA values for most of the data.
+##### Replacing the NA values with zeroes 
+
+```{r}
+
+# Replacing all the na values in CarrierDelay,WeatherDelay,NASDelay,SecurityDelay,LateAircraftDelay columns with zero
+
+vars.to.replace = c("CarrierDelay","WeatherDelay","NASDelay","SecurityDelay","LateAircraftDelay")
+airline1 = airline[vars.to.replace]
+airline1[is.na(airline1)]=0
+airline[vars.to.replace]= airline1
+
+airline$DepTime_hour=as.integer(DepTime/100)
+airline$ArrTime_hour=as.integer(ArrTime/100)
+airline$TotalDelay = abs(airline$ArrDelay) + abs(airline$DepDelay) + abs(airline$CarrierDelay) + abs(airline$WeatherDelay)+ abs(airline$NASDelay) + abs(airline$SecurityDelay) + abs(airline$LateAircraftDelay)
+```
+
+
+##### Creating exploratory plot for delays for each day of the week. Since most of the delays due to the flight reasons are the arrival and the departure delays. Thus, we shall explore these two types only in the following plots.
+```{r}
+
+avgdepdelay = aggregate(DepDelay,by = list(DayOfWeek), FUN = mean, na.rm= TRUE)
+avgarrdelay = aggregate(ArrDelay,by = list(DayOfWeek), FUN = mean, na.rm= TRUE)
+
+#Plot the average arrival / departure delay time against the day of the week 
+
+plot(avgdepdelay$x, type ="b", xlab = "Day of the Week", ylab = "Average Delay in Minutes", col = "Blue", lwd = 3, ylim = c(1,30), main = "Departure & Arrival Delays by Day of Week" )
+lines(avgarrdelay$x, type = "b", col = "Orange", lwd = 3)
+legend ("topright", c("Departure Delay", "Arrival Delay"), lty = 1, col = c('Blue','Orange'))
+
+```
+
+##### Creating exploratory plot for delays for each month of the year
+```{r}
+
+#Aggregating the departure and arrival delays by month of the year
+avg_depdelay_month = aggregate(DepDelay,by = list(Month), FUN = mean, na.rm= TRUE)
+avg_arrdelay_month = aggregate(ArrDelay,by = list(Month), FUN = mean, na.rm= TRUE)
+
+#Plot the average arrival / departure delay time against the month
+plot(avg_depdelay_month$x, type ="b", xlab = "Month of the Year", ylab = "Average Delay in Minutes", col = "Blue", lwd = 3, ylim = c(1,30), main = "Departure & Arrival Delays by Month")
+lines(avg_arrdelay_month$x, type = "b", col = "Orange", lwd = 3)
+legend ("topright", c("Departure Delay", "Arrival Delay"), lty = 1, col = c('Blue','Orange'))
+
+```
+
+##### Creating heat maps for the departure delays for different time and days 
+```{r}
+departure_delays = aggregate(DepDelay~DayOfWeek+DepTime_hour,airline,FUN='mean')
+
+ggplot(departure_delays, aes(DepTime_hour,y=DayOfWeek))+
+  geom_tile(aes(fill=DepDelay))+
+  scale_fill_gradientn(colours=brewer.pal(9,"YlOrRd"),
+                       breaks=seq(0,max(departure_delays$DepDelay),by=3000))+
+  scale_y_continuous(breaks=1:7,labels=c("Mon","Tue","Wed","Thu","Fri","Sat","Sun"))+
+  labs(x="Time of Day (hours)", y="Day of Week")+ coord_fixed() 
+```
+
+##### Creating heat maps for the arrival delays for different time and days
+```{r}
+
+arrival_delays= aggregate(ArrDelay~DayOfWeek+ArrTime_hour,airline,FUN='mean')
+
+ggplot(arrival_delays, aes(ArrTime_hour,y=DayOfWeek))+
+  geom_tile(aes(fill=ArrDelay))+
+  scale_fill_gradientn(colours=brewer.pal(9,"YlOrRd"),
+                       breaks=seq(0,max(arrival_delays$ArrDelay),by=3000))+
+  scale_y_continuous(breaks=1:7,labels=c("Mon","Tue","Wed","Thu","Fri","Sat","Sun"))+
+  labs(x="Time of Day (hours)", y="Day of Week")+ coord_fixed() 
+```
+
+
+##### Creating heat maps for the arrival delays for different days of week and months
+
+```{r}
+arr_agg_month= aggregate(ArrDelay~DayOfWeek+Month,airline,FUN='mean')
+
+ggplot(arr_agg_month, aes(Month,y=DayOfWeek))+
+  geom_tile(aes(fill=ArrDelay))+
+  scale_fill_gradientn(colours=brewer.pal(9,"YlOrRd"),
+                       breaks=seq(0,max(arr_agg_month$ArrDelay),by=3000))+
+  scale_y_continuous(breaks=1:7,labels=c("Mon","Tue","Wed","Thu","Fri","Sat","Sun"))+ 
+  scale_x_continuous(breaks=1:12, labels=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"))+
+  labs(x="Month", y="Day of Week")+ coord_fixed() 
+
+```
+
+##### Creating heat maps for the departure delays for different days of week and months
+
+```{r}
+Dep_agg_month    <- aggregate(DepDelay~DayOfWeek+Month,airline,FUN='mean')
+
+ggplot(Dep_agg_month, aes(Month,y=DayOfWeek))+
+  geom_tile(aes(fill=DepDelay))+
+  scale_fill_gradientn(colours=brewer.pal(9,"YlOrRd"),
+                       breaks=seq(0,max(Dep_agg_month$DepDelay),by=3000))+
+  scale_y_continuous(breaks=7:1,labels=c("Sun","Sat","Fry","Thur","Wed","Tue","Mon"))+ scale_x_continuous(breaks=1:12, labels=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"))+
+  labs(x="Month", y="Day of Week")+ coord_fixed()
+```
+
+
+##### Looking at the above plots we find that we have the highest average delay on Friday.Also, we have the highest average delay by month in Decemeber, June, and March.
+##### This is an expected trend as these months coincide with the popular holiday seasons and we expect higher passenger volume during these periods.
+##### Most of the delays occur in the wee hours specially in Fridays and Tuesdays.
+##### Also, fridays have the longest delays on average with december being the worst.
+
+
+
+###Question 2
+
+#### In order to predict the authors for the different files, we use Naive Bayes & Random Forest techniquees.
+
+##### We start off by loading the libraries required for the analysis.
+```{r}
+
+# Loading the necessary libraries
+
+library(tm)
+library(randomForest)
+library(e1071)
+library(rpart)
+library(ggplot2)
+library(caret)
+library (plyr)
+```
+
+
+###### Creating the reader function
+```{r}
+#reader function
+
+readerPlain = function(fname){
+  readPlain(elem=list(content=readLines(fname)), id=fname, language='en') }
+```
+
+
+
+##### We make up a training corpus by reading in all the files for different authors in the training set.
+##### We can use for loop to iterate over different files in the training set and reading them sequentially.
+
+```{r}
+#TRAINING CORPUS
+author_directory = Sys.glob('C:/Users/Soundgarden/Documents/GitHub/STA380/data/ReutersC50/C50train/*')
+file_list = NULL
+train_labels = NULL
+for(author in author_directory) {
+  author_name = substring(author, first=74)
+  files_to_add = Sys.glob(paste0(author, '/*.txt'))
+  file_list = append(file_list, files_to_add)
+  train_labels = append(train_labels, rep(author_name, length(files_to_add)))
+}
+```
+
+##### Cleaning up the read documents and initializing training corpus.
+```{r}
+# Named conversion & cleanup
+all_docs = lapply(file_list, readerPlain) 
+names(all_docs) = file_list
+names(all_docs) = sub('.txt', '', names(all_docs))
+
+#Initialize Training Corpus
+train_corpus = Corpus(VectorSource(all_docs))
+names(train_corpus) = file_list
+
+```
+
+
+##### Cleaning up the output training corpus 
+```{r}
+
+#Tokenization of training Corpus
+
+#Converting to lowercase
+train_corpus = tm_map(train_corpus, content_transformer(tolower)) 
+
+# Removing the numbers
+train_corpus = tm_map(train_corpus, content_transformer(removeNumbers)) 
+
+#Removing Punctuation Marks
+train_corpus = tm_map(train_corpus, content_transformer(removePunctuation)) 
+
+#Stripping white spaces
+train_corpus = tm_map(train_corpus, content_transformer(stripWhitespace)) 
+
+# Removing stop words
+train_corpus = tm_map(train_corpus, content_transformer(removeWords), stopwords("SMART"))
+
+```
+
+##### Creating a document term matrix for the training data
+```{r}
+#Create training DTM & dense matrix
+DTM_train = DocumentTermMatrix(train_corpus)
+DTM_train = removeSparseTerms(DTM_train, 0.95)
+```
+
+
+##### Creating the testing data and cleaning up similar to the training data
+```{r}
+#TESTING CORPUS
+
+author_directory_test = Sys.glob('C:/Users/Soundgarden/Documents/GitHub/STA380/data/ReutersC50/C50test/*')
+file_list = NULL
+test_labels = NULL
+for(author in author_directory_test) {
+  author_name = substring(author, first=73)
+  files_to_add = Sys.glob(paste0(author, '/*.txt'))
+  file_list = append(file_list, files_to_add)
+  test_labels = append(test_labels, rep(author_name, length(files_to_add)))
+}
+
+# Named conversion & cleanup
+all_docs = lapply(file_list, readerPlain) 
+names(all_docs) = file_list
+names(all_docs) = sub('.txt', '', names(all_docs))
+
+#Initialize Testing Corpus
+test_corpus = Corpus(VectorSource(all_docs))
+names(test_corpus) = file_list
+
+```
+
+
+#####Tokenization of Testing Corpus
+```{r}
+
+
+#Converting to lowercase
+test_corpus = tm_map(test_corpus, content_transformer(tolower)) 
+
+# Removing the numbers
+test_corpus = tm_map(test_corpus, content_transformer(removeNumbers)) 
+
+#Removing Punctuation Marks
+test_corpus = tm_map(test_corpus, content_transformer(removePunctuation)) 
+
+
+#Stripping white spaces
+test_corpus = tm_map(test_corpus, content_transformer(stripWhitespace)) 
+
+# Removing stop words
+test_corpus = tm_map(test_corpus, content_transformer(removeWords), stopwords("SMART"))
+
+```
+
+##### Dictionary Creation: Creating a dictionary of all the terms occuring in the training corpus so that they can be 
+##### used to create a matrix for predicting the testing document terms
+```{r, results='hide'}
+
+# We need a dictionary of terms from the training corpus in order to extract terms from the test corpus
+training_dictionary= NULL
+training_dictionary= dimnames(DTM_train)[[2]]
+
+#Create testing DTM & matrix using dictionary words only
+DTM_test = DocumentTermMatrix(test_corpus, list(dictionary= training_dictionary))
+DTM_test = removeSparseTerms(DTM_test, 0.95)
+
+#Convert DTMs into Data Frames for use in classifier models
+
+DTM_training_df = as.data.frame(inspect(DTM_train))
+DTM_testing_df = as.data.frame(inspect(DTM_test))
+```
+
+
+##### Applying Naive Bayes model to the training data to predict the outcomes for the test data.
+##### We also use Laplacian smoothing for the Naive Bayes model
+```{r, results='hide'}
+
+# Naive Bayes Model
+model_NB = naiveBayes(x=DTM_training_df, y=as.factor(train_labels), laplace=1)
+
+# Predicting outcomes for the testing data
+pred_NB = predict(model_NB, DTM_testing_df)
+
+table_NB = as.data.frame(table(pred_NB,test_labels))
+
+# Creating a confusion Matrix to check for the accuracy of the Naive Bayes model.
+conf_NB = confusionMatrix(table(pred_NB,test_labels))
+```
+
+##### Analyzing the results from the Naive Bayes Model
+##### Looking at the following graph and the accuracy score of 74% we can say that Naive Bayes did a fairly decent
+##### job of predicting the test data. 
+##### It signifies that approximately 74% times the model was able to correctly identify the correct author
+##### on the test data set.
+```{r}
+# Plotting the results for the Naive Bayes results
+plot = ggplot(table_NB)
+plot + geom_tile(aes(x=test_labels, y=pred_NB, fill=Freq)) + 
+  scale_x_discrete(name="Actual Class") + 
+  scale_y_discrete(name="Predicted Class") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+conf_NB$overall
+
+```
+
+
+##### Applying the random forest model to perform predictions.
+##### The difference between Naive Bayes and random forest for this analysis is that Naive bayes considers that
+##### the words other than those in the training set will not occur. Random forest takes into account the non- occuring words. It requires the columns to be the same for both the training data and the test data.
+
+##### Looking at the accuracy measures for random forest model, we're able to correctly identify the author in the test data with 69% accuracy.
+```{r}
+
+#Random Forest Model 
+
+DTM_test = as.matrix(DTM_test)
+DTM_train = as.matrix(DTM_train)
+
+# Adding empty columns in the test data set for words that appear in
+#the training data, but not in the test data. 
+#RandomForest requires the same variables in training and test sets
+
+
+common <- data.frame(DTM_testing_df[,intersect(colnames(DTM_testing_df), colnames(DTM_training_df))])
+unknown <- read.table(textConnection(""), col.names = colnames(DTM_training_df), colClasses = "integer")
+
+RFM_test_clean = rbind.fill(common, unknown)
+
+RFM_test_df = as.data.frame(RFM_test_clean)
+
+
+randomforest_model = randomForest(x=DTM_training_df, y=as.factor(train_labels), mtry=3, ntree=200)
+pred_RF = predict(randomforest_model, data=RFM_test_clean)
+
+table_RF = as.data.frame(table(pred_RF,test_labels))
+
+plot = ggplot(table_RF)
+plot + geom_tile(aes(x=test_labels, y=pred_RF, fill=Freq)) + 
+  scale_x_discrete(name="Actual Class") + 
+  scale_y_discrete(name="Predicted Class") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+confint_RF = confusionMatrix(table(pred_RF,test_labels))
+
+confint_RF$overall
+
+```
+
+##### Overall, Naive Bayes did a better job of predicting the authors for the test dataset than  the random forests
+
+
+
+###Question 3
+
+```{r}
+
+# Loading the required libraries
+library(arules) 
+
+# Read in groceries for the different transactions and creating a transaction object
+# Since there can be multiple items in a single transaction we use the format as the basket for read. transactions command
+groceries <- read.transactions("C:/Users/Soundgarden/Documents/GitHub/STA380/data/groceries.txt", format = c("basket"), sep = ",", cols = NULL, rm.duplicates = TRUE, encoding = "unknown")
+
+# Now run the 'apriori' algorithm on the transaction data to find the frequent items set
+# Finding the rules with support > .01 & confidence >.5 & length (# artists) <= 5
+grocery_cat <- apriori(groceries, 
+                      parameter=list(support=.01, confidence=.5, maxlen=5))
+
+```
+
+
+##### Inspecting the output of the apriori algorithm and creating meaningful subsets.
+##### Looking at the output we find the 15 subsets in the data with high association
+##### We looked at those subsets that had lift >3 / confidence>0.57 / support >0.015 and confidence>0.55
+##### We used these subset parameters so as to come up with the subset that had relatively higher relevance and lift  than the other subsets in the data
+
+##### On analysisng the outputs we find that whole milk is bought together with curd & yogurt whereas people purchasing fruits and root vegetables had higher chances to purchase other vegetables as well.
+
+```{r}
+
+
+library(arules)
+# Look at the output
+inspect(grocery_cat)
+
+## Choose a subset
+inspect(subset(grocery_cat, subset=lift > 3))
+inspect(subset(grocery_cat, subset=confidence > 0.58))
+inspect(subset(grocery_cat, subset=support > .015 & confidence > 0.55))
+
+```
